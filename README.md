@@ -1,4 +1,4 @@
-# automated-data-warehouse-pipeline
+# Automated Data Warehouse Pipeline Project
 
 # Project Overview
 
