@@ -1,1 +1,7 @@
+For this project, I will be using the following libraries:
+    pandas
+    requests
+    pyodbc
+    sqlalchemy
 
+Other than this, I will be using SQL Server for working with the SQL queries and creating the different layers of the Medallion Architecture.
