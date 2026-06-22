@@ -216,3 +216,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project data files
+data/csv/*.csv
+data/json/*.json
+
+# Keep folder structure
+!data/csv/.gitkeep
+!data/json/.gitkeep
+!data/api/.gitkeep
