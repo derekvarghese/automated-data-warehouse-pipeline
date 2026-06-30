@@ -1,6 +1,7 @@
 from database import get_connection
 import requests
 import json
+import pandas as pd
 
 
 def extract_cart_data():
@@ -10,6 +11,7 @@ def extract_cart_data():
 
     url = "https://dummyjson.com/carts"
     response = requests.get(url)
+    response.raise_for_status()
 
     cart_data = response.json()
 
@@ -239,6 +241,68 @@ def load_user_addresses(cursor, user_address_data):
     print("User addresses loaded successfully")
 
 
+def extract_sales_data():
+    # ==========================================
+    # CSV DATA INGESTION - SALES
+    # ==========================================
+
+    df = pd.read_csv("data/csv/online_retail.csv", encoding="latin1")
+    df["InvoiceDate"] = pd.to_datetime(df["InvoiceDate"], format="%d-%m-%Y %H:%M")
+
+    sales_data = []
+
+    for _, row in df.iterrows():
+        sales_record = {
+            "InvoiceNo": row["InvoiceNo"],
+            "StockCode": row["StockCode"],
+            "Description": (
+                None if pd.isna(row["Description"]) else str(row["Description"])
+            ),
+            "Quantity": int(row["Quantity"]),
+            "InvoiceDate": row["InvoiceDate"].to_pydatetime(),
+            "UnitPrice": float(row["UnitPrice"]),
+            "CustomerID": (
+                None if pd.isna(row["CustomerID"]) else int(row["CustomerID"])
+            ),
+            "Country": row["Country"],
+        }
+        sales_data.append(sales_record)
+
+    return sales_data
+
+
+def load_sales_data(cursor, sales_data):
+    sales_query = """
+    INSERT INTO bronze.online_retail
+    (
+        InvoiceNo,
+        StockCode,
+        Description,
+        Quantity,
+        InvoiceDate,
+        UnitPrice,
+        CustomerID,
+        Country
+    )
+    VALUES (?,?,?,?,?,?,?,?)
+    """
+
+    for sales in sales_data:
+        cursor.execute(
+            sales_query,
+            sales["InvoiceNo"],
+            sales["StockCode"],
+            sales["Description"],
+            sales["Quantity"],
+            sales["InvoiceDate"],
+            sales["UnitPrice"],
+            sales["CustomerID"],
+            sales["Country"],
+        )
+
+    print("Sales data loaded successfully")
+
+
 # ==========================================
 # MAIN PIPELINE
 # ==========================================
@@ -265,6 +329,11 @@ def main():
     load_user_addresses(cursor, user_address_data)
     conn.commit()
     print("JSON data ingestion successful")
+
+    sales_data = extract_sales_data()
+    load_sales_data(cursor, sales_data)
+    conn.commit()
+    print("CSV data ingestion successful")
 
     cursor.close()
     conn.close()
