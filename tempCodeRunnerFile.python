@@ -1,0 +1,56 @@
+import requests
+
+
+def extract_cart_data():
+    # ==========================================
+    # API DATA INGESTION - CARTS
+    # ==========================================
+
+    url = "https://dummyjson.com/carts"
+    response = requests.get(url)
+    response.raise_for_status()
+
+    cart_data = response.json()
+
+    carts_data = []
+    carts_products_data = []
+
+    for cart in cart_data["carts"]:
+
+        cart_record = {
+            "id": cart["id"],
+            "userId": cart["userId"],
+            "total": cart["total"],
+            "discountedTotal": cart["discountedTotal"],
+            "totalProducts": cart["totalProducts"],
+            "totalQuantity": cart["totalQuantity"],
+        }
+
+        carts_data.append(cart_record)
+
+        cart_id = cart["id"]
+
+        for product in cart["products"]:
+
+            product_record = {
+                "cart_id": cart_id,
+                "product_id": product["id"],
+                "title": product["title"],
+                "price": product["price"],
+                "quantity": product["quantity"],
+                "total": product["total"],
+                "discountPercentage": product["discountPercentage"],
+                "discountedTotal": product["discountedTotal"],
+            }
+
+            carts_products_data.append(product_record)
+
+    return carts_data, carts_products_data
+
+def main():
+    carts_data, carts_products_data = extract_cart_data()
+    for product in carts_products_data:
+        if product["cart_id"] == 7:
+            print(product)
+
+main()
