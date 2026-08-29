@@ -168,6 +168,47 @@ def transform_sales_summary(cursor):
         )
 
 
+def transform_cart_analysis(cursor):
+    cursor.execute("DELETE FROM gold.cart_analysis")
+
+    cursor.execute("""
+        select
+            id,
+            userId,
+            totalProducts,
+            totalQuantity,
+            total,
+            discountedTotal,
+            (total - discountedTotal) as TotalDiscount
+        from silver.carts
+    """)
+    cart_analysis = cursor.fetchall()
+
+    insert_cart_analysis_query = """
+        INSERT INTO gold.cart_analysis(
+            CartID,
+            UserID,
+            TotalProducts,
+            TotalQuantity,
+            CartValue,
+            DiscountedCartValue,
+            TotalDiscount
+        )
+        VALUES (?,?,?,?,?,?,?)
+    """
+    for cart in cart_analysis:
+        cursor.execute(
+            insert_cart_analysis_query,
+            cart[0],
+            cart[1],
+            cart[2],
+            cart[3],
+            cart[4],
+            cart[5],
+            cart[6],
+        )
+
+
 def main():
     conn = get_connection()
     cursor = conn.cursor()
@@ -183,6 +224,10 @@ def main():
     transform_sales_summary(cursor)
     conn.commit()
     print("Sales summary moved to Gold successfully")
+
+    transform_cart_analysis(cursor)
+    conn.commit()
+    print("Cart analysis moved to Gold successfully")
 
     cursor.close()
     conn.close()
