@@ -1,4 +1,46 @@
+from datetime import datetime
 from database import get_connection
+
+
+def get_run_id(cursor):
+    cursor.execute("SELECT ISNULL(MAX(RunId),0) + 1 FROM gold.pipeline_monitoring")
+    return cursor.fetchone()[0]
+
+
+def log_pipeline_monitoring(
+    cursor,
+    run_id,
+    pipeline_name,
+    table_name,
+    start_time,
+    end_time,
+    status,
+    records_processed,
+    error_message,
+):
+    cursor.execute(
+        """
+        INSERT INTO gold.pipeline_monitoring(
+            RunId,
+            PipelineName,
+            TableName,
+            StartTime,
+            EndTime,
+            Status,
+            RecordsProcessed,
+            ErrorMessage
+        )
+        VALUES (?,?,?,?,?,?,?,?)
+    """,
+        run_id,
+        pipeline_name,
+        table_name,
+        start_time,
+        end_time,
+        status,
+        records_processed,
+        error_message,
+    )
 
 
 def transform_customer_sales(cursor):
@@ -44,6 +86,8 @@ def transform_customer_sales(cursor):
             customer[5],
             customer[6],
         )
+
+    return len(customer_sales)
 
 
 def transform_product_performance(cursor):
@@ -125,6 +169,8 @@ def transform_product_performance(cursor):
             product[7],
         )
 
+    return len(product_performance)
+
 
 def transform_sales_summary(cursor):
     cursor.execute("DELETE FROM gold.sales_summary")
@@ -167,6 +213,8 @@ def transform_sales_summary(cursor):
             summary[6],
         )
 
+    return len(sales_summary)
+
 
 def transform_cart_analysis(cursor):
     cursor.execute("DELETE FROM gold.cart_analysis")
@@ -207,30 +255,211 @@ def transform_cart_analysis(cursor):
             cart[5],
             cart[6],
         )
+    return len(cart_analysis)
 
 
 def main():
     conn = get_connection()
     cursor = conn.cursor()
 
-    transform_customer_sales(cursor)
-    conn.commit()
-    print("Customer sales summary moved to Gold successfully")
+    run_id = get_run_id(cursor)
+    print(f"Starting Gold pipeline - RunID: {run_id}")
 
-    transform_product_performance(cursor)
-    conn.commit()
-    print("Product performance moved to Gold successfully")
+    customer_sales_status = "SUCCESS"
+    customer_sales_count = 0
+    start_time = datetime.now()
+    try:
+        customer_sales_count = transform_customer_sales(cursor)
 
-    transform_sales_summary(cursor)
-    conn.commit()
-    print("Sales summary moved to Gold successfully")
+        end_time = datetime.now()
+        log_pipeline_monitoring(
+            cursor,
+            run_id,
+            "Gold Transformation",
+            "customer_sales_summary",
+            start_time,
+            end_time,
+            customer_sales_status,
+            customer_sales_count,
+            None,
+        )
 
-    transform_cart_analysis(cursor)
-    conn.commit()
-    print("Cart analysis moved to Gold successfully")
+        conn.commit()
+        print(
+            f"Customer sales summary completed successfully - {customer_sales_count} records processed"
+        )
+
+    except Exception as e:
+        conn.rollback()
+        customer_sales_status = "FAILED"
+
+        end_time = datetime.now()
+        log_pipeline_monitoring(
+            cursor,
+            run_id,
+            "Gold Transformation",
+            "customer_sales_summary",
+            start_time,
+            end_time,
+            customer_sales_status,
+            customer_sales_count,
+            str(e),
+        )
+
+        conn.commit()
+        print(f"Customer sales summary FAILED - 0 records processed - {str(e)}")
+
+    product_performance_status = "SUCCESS"
+    product_performance_count = 0
+    start_time = datetime.now()
+    try:
+        product_performance_count = transform_product_performance(cursor)
+
+        end_time = datetime.now()
+        log_pipeline_monitoring(
+            cursor,
+            run_id,
+            "Gold Transformation",
+            "product_performance",
+            start_time,
+            end_time,
+            product_performance_status,
+            product_performance_count,
+            None,
+        )
+
+        conn.commit()
+        print(
+            f"Product performance completed successfully - {product_performance_count} records processed"
+        )
+
+    except Exception as e:
+        conn.rollback()
+        product_performance_status = "FAILED"
+
+        end_time = datetime.now()
+        log_pipeline_monitoring(
+            cursor,
+            run_id,
+            "Gold Transformation",
+            "product_performance",
+            start_time,
+            end_time,
+            product_performance_status,
+            product_performance_count,
+            str(e),
+        )
+
+        conn.commit()
+        print(f"Product performance FAILED - 0 records processed - {str(e)}")
+
+    sales_summary_status = "SUCCESS"
+    sales_summary_count = 0
+    start_time = datetime.now()
+    try:
+        sales_summary_count = transform_sales_summary(cursor)
+
+        end_time = datetime.now()
+        log_pipeline_monitoring(
+            cursor,
+            run_id,
+            "Gold Transformation",
+            "sales_summary",
+            start_time,
+            end_time,
+            sales_summary_status,
+            sales_summary_count,
+            None,
+        )
+
+        conn.commit()
+        print(
+            f"Sales summary completed successfully - {sales_summary_count} records processed"
+        )
+
+    except Exception as e:
+        conn.rollback()
+        sales_summary_status = "FAILED"
+
+        end_time = datetime.now()
+        log_pipeline_monitoring(
+            cursor,
+            run_id,
+            "Gold Transformation",
+            "sales_summary",
+            start_time,
+            end_time,
+            sales_summary_status,
+            sales_summary_count,
+            str(e),
+        )
+
+        conn.commit()
+        print(f"Sales summary FAILED - 0 records processed - {str(e)}")
+
+    cart_analysis_status = "SUCCESS"
+    cart_analysis_count = 0
+    start_time = datetime.now()
+    try:
+        cart_analysis_count = transform_cart_analysis(cursor)
+
+        end_time = datetime.now()
+        log_pipeline_monitoring(
+            cursor,
+            run_id,
+            "Gold Transformation",
+            "cart_analysis",
+            start_time,
+            end_time,
+            cart_analysis_status,
+            cart_analysis_count,
+            None,
+        )
+
+        conn.commit()
+        print(
+            f"Cart analysis completed successfully - {cart_analysis_count} records processed"
+        )
+
+    except Exception as e:
+        conn.rollback()
+        cart_analysis_status = "FAILED"
+
+        end_time = datetime.now()
+        log_pipeline_monitoring(
+            cursor,
+            run_id,
+            "Gold Transformation",
+            "cart_analysis",
+            start_time,
+            end_time,
+            cart_analysis_status,
+            cart_analysis_count,
+            str(e),
+        )
+
+        conn.commit()
+        print(f"Cart analysis FAILED - 0 records processed - {str(e)}")
 
     cursor.close()
     conn.close()
+
+    print("=" * 50)
+    print(f"Gold Pipeline Completed - RunID: {run_id}")
+    print("=" * 50)
+    print(
+        f"Customer Sales       : {customer_sales_status} - {customer_sales_count} records"
+    )
+    print(
+        f"Product Performance  : {product_performance_status} - {product_performance_count} records"
+    )
+    print(
+        f"Sales Summary        : {sales_summary_status} - {sales_summary_count} records"
+    )
+    print(
+        f"Cart Analysis        : {cart_analysis_status} - {cart_analysis_count} records"
+    )
+    print("=" * 50)
 
 
 if __name__ == "__main__":
